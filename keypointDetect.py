@@ -62,6 +62,22 @@ def computePrincipalCurvature(DoG_pyramid):
     ##################
     # TO DO ...
     # Compute principal curvature here
+    principal_curvature = np.zeros((DoG_pyramid.shape[0], \
+                                 DoG_pyramid.shape[1], DoG_pyramid.shape[2]))
+    for i in range(DoG_pyramid.shape[-1]):
+        grad_x = cv2.Sobel(DoG_pyramid[:, :, i], cv2.CV_64F, 1, 0, ksize=5)
+        grad_y = cv2.Sobel(DoG_pyramid[:, :, i], cv2.CV_64F, 0, 1, ksize=5)
+        x_grad_x = cv2.Sobel(grad_x, cv2.CV_64F, 1, 0, ksize=5)
+        y_grad_x = cv2.Sobel(grad_x, cv2.CV_64F, 0, 1, ksize=5)
+        x_grad_y = cv2.Sobel(grad_y, cv2.CV_64F, 1, 0, ksize=5)
+        y_grad_y = cv2.Sobel(grad_y, cv2.CV_64F, 0, 1, ksize=5)
+        for x in range(grad_x.shape[0]):
+            for y in range(grad_x.shape[1]):
+                hessian = np.matrix([[x_grad_x[x, y], y_grad_x[x, y]], [x_grad_y[x, y], y_grad_y[x, y]]])
+                if(np.linalg.det(hessian) == 0):
+                    principal_curvature[x, y, i] = 0
+                else:
+                    principal_curvature[x, y, i]=(np.trace(hessian))**2 / np.linalg.det(hessian)
     return principal_curvature
 
 def getLocalExtrema(DoG_pyramid, DoG_levels, principal_curvature,
@@ -83,11 +99,27 @@ def getLocalExtrema(DoG_pyramid, DoG_levels, principal_curvature,
         locsDoG - N x 3 matrix where the DoG pyramid achieves a local extrema in both
                scale and space, and also satisfies the two thresholds.
     '''
-    locsDoG = None
+    locsDoG = []
     ##############
     #  TO DO ...
     # Compute locsDoG here
-    return locsDoG
+    height = DoG_pyramid.shape[0]
+    width = DoG_pyramid.shape[1]
+    level = DoG_pyramid.shape[2]
+    for i in range(1, height):
+        for j in range(1, width):
+            for k in range(1, level):
+                currPixel = DoG_pyramid[i, j, k]
+                if abs(currPixel) > th_contrast:
+                    if principal_curvature[i, j, k] < th_r:
+                        neighbors =  DoG_pyramid[(i - 1): (i + 2), \
+                               (j - 1): (j + 2), k].flatten()
+                        neighbors = np.concatenate([neighbors,\
+                                                   DoG_pyramid[i, j, \
+                           (k - 1):(k + 2)]])
+                        if np.max(neighbors) == currPixel or np.min(neighbors) == currPixel:
+                            locsDoG.append([j, i, k])   
+    return np.array(locsDoG)
     
 
 def DoGdetector(im, sigma0=1, k=np.sqrt(2), levels=[-1,0,1,2,3,4], 
@@ -120,6 +152,17 @@ def DoGdetector(im, sigma0=1, k=np.sqrt(2), levels=[-1,0,1,2,3,4],
     ##########################
     # TO DO ....
     # compupte gauss_pyramid, gauss_pyramid here
+    gauss_pyramid = createGaussianPyramid(im, sigma0, k)
+    DoG_pyr, DoG_levels = createDoGPyramid(gauss_pyramid, levels)
+    pc_curvature = computePrincipalCurvature(DoG_pyr)
+    locsDoG = getLocalExtrema(DoG_pyr, DoG_levels, pc_curvature, th_contrast, th_r)
+   # im = cv2.resize(im, (im.shape[1]*6, im.shape[0]*6))
+   # for loc in locsDoG:
+   #     cv2.circle(im, (loc[0]*6, loc[1]*6), 4, (0, 255, 0), -1)
+
+   # cv2.imshow('image', im)
+   # cv2.waitKey(0)  # press any key to exit
+   # cv2.destroyAllWindows()
     return locsDoG, gauss_pyramid
 
 
@@ -133,18 +176,18 @@ if __name__ == '__main__':
     levels = [-1,0,1,2,3,4]
     im = cv2.imread('../data/model_chickenbroth.jpg')
     im_pyr = createGaussianPyramid(im)
-    # displayPyramid(im_pyr)
+    #displayPyramid(im_pyr)
     # test DoG pyramid
     DoG_pyr, DoG_levels = createDoGPyramid(im_pyr, levels)
-    displayPyramid(DoG_pyr)
+    # displayPyramid(DoG_pyr)
     # test compute principal curvature
     pc_curvature = computePrincipalCurvature(DoG_pyr)
-    displayPyramid(pc_curvature)
+    #displayPyramid(pc_curvature)
     # test get local extrema
     th_contrast = 0.03
     th_r = 12
-    # locsDoG = getLocalExtrema(DoG_pyr, DoG_levels, pc_curvature, th_contrast, th_r)
+    locsDoG = getLocalExtrema(DoG_pyr, DoG_levels, pc_curvature, th_contrast, th_r)
     # test DoG detector
-    # locsDoG, gaussian_pyramid = DoGdetector(im)
+    locsDoG, gaussian_pyramid = DoGdetector(im)
 
 

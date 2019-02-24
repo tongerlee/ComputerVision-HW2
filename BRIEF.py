@@ -4,6 +4,8 @@ import os
 from scipy.spatial.distance import cdist
 from keypointDetect import DoGdetector
 
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 
@@ -24,6 +26,8 @@ def makeTestPattern(patch_width=9, nbits=256):
     #############################
     # TO DO ...
     # Generate testpattern here
+    compareX = np.random.randint(0, patch_width**2, size = nbits)
+    compareY = np.random.randint(0, patch_width**2, size = nbits)
     return  compareX, compareY
 
 # load test pattern for Brief
@@ -53,7 +57,7 @@ def computeBrief(im, gaussian_pyramid, locsDoG, k, levels,
     
      OUTPUT
      locs - an m x 3 vector, where the first two columns are the image
-    		 coordinates of keypoints and the third column is the pyramid
+             coordinates of keypoints and the third column is the pyramid
             level of the keypoints.
      desc - an m x n bits matrix of stacked BRIEF descriptors. m is the number
             of valid descriptors in the image and will vary.
@@ -61,6 +65,27 @@ def computeBrief(im, gaussian_pyramid, locsDoG, k, levels,
     ##############################
     # TO DO ...
     # compute locs, desc here
+    locs = []
+    desc = []
+    patch_width = 9
+    nbits = 256
+    half_patch = patch_width//2;
+    height = gaussian_pyramid.shape[0]
+    width = gaussian_pyramid.shape[1]
+    for x, y, level in locsDoG:
+        if (x >= half_patch) and (x <= width - half_patch - 1) and \
+        (y >= half_patch) and (y <= height - half_patch - 1):
+            locs.append([x, y, level])
+            patch = np.array(gaussian_pyramid[y-4:y+5, x-4:x+5, level]).flatten()
+            desc_tmp = []
+            for i in range(nbits):
+                if(patch[compareX[i]] < patch[compareY[i]]):
+                    desc_tmp.append(1)
+                else:
+                    desc_tmp.append(0)
+            desc.append(desc_tmp)
+    locs = np.array(locs)
+    desc = np.array(desc)
     return locs, desc
 
 
@@ -79,6 +104,11 @@ def briefLite(im):
     '''
     ###################
     # TO DO ...
+    k = np.sqrt(2)
+    levels =[-1,0,1,2,3,4]
+    locsDoG, gaussian_pyramid = DoGdetector(im)
+    locs, desc = computeBrief(im, gaussian_pyramid, locsDoG, k, levels,
+    compareX, compareY)
     return locs, desc
 
 def briefMatch(desc1, desc2, ratio=0.8):
@@ -138,8 +168,9 @@ if __name__ == '__main__':
     plt.close(fig)
     # test matches
     im1 = cv2.imread('../data/model_chickenbroth.jpg')
-    im2 = cv2.imread('../data/chickenbroth_01.jpg')
+    im2 = cv2.imread('../data/model_chickenbroth.jpg')
     locs1, desc1 = briefLite(im1)
     locs2, desc2 = briefLite(im2)
     matches = briefMatch(desc1, desc2)
+    print(matches.shape)
     plotMatches(im1,im2,matches,locs1,locs2)
