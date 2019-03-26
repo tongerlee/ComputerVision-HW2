@@ -1,5 +1,5 @@
 import os
-andrew_id = 'XXX'
+andrew_id = 'jiatong2'
 
 
 def check_file(file):
@@ -10,13 +10,13 @@ def check_file(file):
         return False
     
 
-if ( check_file('../'+andrew_id+'/code/BRIEF.py') and \
-     check_file('../'+andrew_id+'/code/keypointDetect.py') and \
-     check_file('../'+andrew_id+'/code/panoramas.py') and \
-     check_file('../'+andrew_id+'/code/planarH.py') and \
-     check_file('../'+andrew_id+'/results/6_1.npy') and \
-     check_file('../'+andrew_id+'/results/testPattern.npy') and \
-     check_file('../'+andrew_id+'/'+andrew_id+'_hw2.pdf') ):
+if ( check_file('BRIEF.py') and \
+     check_file('keypointDetect.py') and \
+     check_file('panoramas.py') and \
+     check_file('planarH.py') and \
+     check_file('../results/q6_1.npy') and \
+     check_file('../results/testPattern.npy') and \
+     check_file('../jiatong2_hw2.pdf') ):
     print('file check passed!')
 else:
     print('file check failed!')

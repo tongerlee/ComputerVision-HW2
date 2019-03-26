@@ -15,7 +15,20 @@ def computeH(p1, p2):
     assert(p1.shape[0]==2)
     #############################
     # TO DO ...
-    return H2to1
+    A = []
+    n = p1.shape[1]
+    for i in range(n):
+       x = p1[0, i]
+       y = p1[1, i]
+       u = p2[0, i]
+       v = p2[1, i]
+       A.append([-u, -v, -1, 0, 0, 0, u*x, v*x, x])
+       A.append([ 0, 0, 0,-u, -v, -1, u*y, v*y, y])
+
+    U, S, V = np.linalg.svd(np.asarray(A))
+    H2to1 = V[-1, :]/V[-1, -1]
+
+    return H2to1.reshape(3, 3)
 
 def ransacH(matches, locs1, locs2, num_iter=5000, tol=2):
     '''
@@ -32,6 +45,41 @@ def ransacH(matches, locs1, locs2, num_iter=5000, tol=2):
     ''' 
     ###########################
     # TO DO ...
+    bestH = None
+    maxInliers = 0
+    correctMatches = matches.shape[0]
+    
+    allX = locs1[matches[:, 0], 0:2]
+    allU = locs2[matches[:, 1], 0:2]
+    p1 = allX.swapaxes(0, 1)
+    p2 = allU.swapaxes(0, 1)
+    
+    for i in range(num_iter):
+        correspondences = np.random.randint(correctMatches, size=4)
+        # print(correspondences)
+        # print(p1[:, correspondences])
+        # print(p2[:, correspondences])
+        H2to1 = computeH(p1[:, correspondences], p2[:, correspondences])
+        
+        input_u = np.vstack((p2, np.ones(allU.shape[0])))
+        test_x = np.matmul(H2to1, input_u)
+        test_x = test_x/test_x[2, :]
+        # print(test_x.shape)
+        test_x = test_x[:2, :]
+        # print(test_x.shape)
+        distance = np.sqrt(np.sum((p1 - test_x)**2, axis = 0))
+        
+        currInliers = 0
+        for each in distance:
+            if each < tol:
+                currInliers +=1
+            #print(currInliers)
+        
+        if currInliers > maxInliers: 
+            # print(H2to1)
+            # print(currInliners)
+            bestH, maxInliers = H2to1, currInliers
+
     return bestH
         
     
@@ -42,5 +90,6 @@ if __name__ == '__main__':
     locs1, desc1 = briefLite(im1)
     locs2, desc2 = briefLite(im2)
     matches = briefMatch(desc1, desc2)
-    ransacH(matches, locs1, locs2, num_iter=5000, tol=2)
+    bestH = ransacH(matches, locs1, locs2, num_iter=5000, tol=2)
+    print(bestH)
 
